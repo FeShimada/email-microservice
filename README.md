@@ -96,3 +96,101 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+---
+
+# Passo-a-passo para rodar o Microserviço de Email localmente
+
+## Pré-requisitos
+
+- **Node.js** (recomendado: versão 18+)
+- **npm** (geralmente já vem com o Node)
+- **RabbitMQ** (pode ser via Docker ou instalado localmente)
+
+## 1. Instale as dependências do projeto
+
+```bash
+npm install
+```
+
+## 2. Suba o RabbitMQ
+
+### Opção 1: Usando Docker (recomendado)
+
+Se você tem Docker instalado, rode:
+
+```bash
+docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+- O painel web ficará disponível em: http://localhost:15672 (usuário/senha: guest/guest)
+
+### Opção 2: Instalação local
+
+Baixe e instale o RabbitMQ em https://www.rabbitmq.com/download.html
+
+## 3. Configure as variáveis de ambiente
+
+Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
+
+```
+# Configurações SMTP
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu-email@gmail.com
+SMTP_PASS=sua-senha-de-app
+SMTP_FROM=seu-email@gmail.com
+```
+
+### Como obter as credenciais do Gmail
+1. Ative a verificação em duas etapas na sua conta Google
+2. Gere uma senha de app em https://myaccount.google.com/security > Senhas de app
+3. Use essa senha no campo `SMTP_PASS`
+
+> **Atenção:** Não compartilhe sua senha de app!
+
+## 4. Execute o microserviço
+
+```bash
+npm run start:dev
+```
+
+O serviço irá se conectar ao RabbitMQ e ficará escutando a fila `email_queue`.
+
+## 5. Testando o envio de email
+
+Acesse o painel do RabbitMQ em http://localhost:15672, vá em **Queues > email_queue > Publish message** e envie uma mensagem com o seguinte formato:
+
+```
+{
+  "pattern": "send_email",
+  "data": {
+    "to": "destinatario@exemplo.com",
+    "subject": "Teste",
+    "body": "Olá, este é um teste!"
+  }
+}
+```
+
+- O microserviço irá processar e enviar o email usando as credenciais configuradas.
+- Verifique os logs do terminal para acompanhar o processamento.
+
+## 6. Fluxo resumido do sistema
+
+1. O sistema principal (MVC) adiciona um job na fila `email_queue` com o padrão `send_email` e os dados do email.
+2. O microserviço de email consome a fila, processa e envia o email via SMTP.
+3. O usuário recebe o email e pode clicar no link de confirmação.
+
+## Fluxo de Arquitetura do Sistema
+
+A imagem abaixo demonstra o fluxo de confirmação de email, integrando o sistema principal (MVC) com o microserviço de email:
+
+<p align="center">
+  <img src="./arquitetura-microservice.png" alt="Fluxo de confirmação de email" width="600"/>
+</p>
+
+---
+
+Pronto! Agora você tem um microserviço de email funcional rodando localmente.
+
+Se tiver dúvidas, consulte o código ou abra uma issue.
